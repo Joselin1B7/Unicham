@@ -1,24 +1,64 @@
 $(document).ready(function() {
-    $('#btnReset').click(function(e) {
-        e.preventDefault();
-        $('.alert').hide();
-
+    $('#btnReset').click(function() {
+        // Obtener valores de los campos
         const email = $('#inputEmail').val().trim();
-        const pass = $('#inputNewPassword').val().trim();
-        const conf = $('#inputConfirmPassword').val().trim();
+        const password = $('#inputNewPassword').val();
+        const confirmPassword = $('#inputConfirmPassword').val();
 
-        // Validación directa sin funciones extra
-        if (!email || !pass || !conf) {
-            return Swal.fire('Error', 'Todos los campos son obligatorios', 'warning');
+        // Limpiar alertas previas
+        $('.form-text.text-danger').hide().text('');
+
+        // 1. Validaciones básicas en el cliente
+        if (email === "" || password === "" || confirmPassword === "") {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Campos incompletos',
+                text: 'Por favor, llena todos los campos solicitados.'
+            });
+            return;
         }
 
-        if (pass !== conf) {
-            return $('#confirmPasswordAlert').text("Las contraseñas no coinciden.").show();
+        if (password !== confirmPassword) {
+            $('#confirmPasswordAlert').text('Las contraseñas no coinciden.').show();
+            return;
         }
 
-        $.post('http://localhost/sim/user/resetPassword', { email, new_password: pass }, function(data) {
-            const icon = data.status == 1 ? 'success' : 'error';
-            Swal.fire(data.status == 1 ? '¡Éxito!' : 'Error', data.message, icon);
-        }, 'json').fail(() => Swal.fire('Error', 'Fallo de conexión', 'error'));
+        // 2. Petición AJAX al controlador
+        $.ajax({
+            url: 'http://localhost/UniCham/login/updatePassword', // Ajusta a tu ruta real
+            method: 'POST',
+            data: {
+                email: email,
+                password: password
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === 'success') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Éxito!',
+                        text: 'Tu contraseña ha sido restablecida correctamente.',
+                        confirmButtonText: 'Ir al Login'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            window.location.href = 'http://localhost/UniCham/login/auth';
+                        }
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: response.message || 'No se pudo restablecer la contraseña.'
+                    });
+                }
+            },
+            error: function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error de conexión',
+                    text: 'Ocurrió un error al comunicarse con el servidor.'
+                });
+            }
+        });
     });
 });
