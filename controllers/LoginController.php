@@ -8,15 +8,19 @@ require_once __DIR__ . '/../interfaces/AlumnoInterface.php';
 
 class LoginController implements AlumnoInterface
 {
+    /**
+     * Muestra la vista principal de autenticación.
+     */
     public function auth() {
         View::render("Inicio/authView", ["user" => 0]);
     }
 
-
+    /**
+     * Procesa el inicio de sesión comparando la matrícula y el hash de la contraseña.
+     */
     public function validador() {
         header('Content-Type: application/json');
         
-        // 1. Validar que existan los datos
         if (!isset($_POST['matricula']) || !isset($_POST['password'])) {
             echo json_encode(['status' => -1, 'message' => 'Faltan datos de autenticación.']);
             exit();
@@ -28,19 +32,16 @@ class LoginController implements AlumnoInterface
         $alumnoModel = new AlumnoModel();
         $alumnoData  = $alumnoModel->getAlumnoByMatricula($matricula);
 
-        // 2. Validar si el alumno existe
         if (!$alumnoData) {
             echo json_encode(['status' => 0, 'message' => 'Matrícula o contraseña incorrectas.']);
             exit();
         }
 
-        // 3. Validar contraseña
         if (!password_verify($password, $alumnoData['password_hash'])) {
             echo json_encode(['status' => 0, 'message' => 'Matrícula o contraseña incorrectas.']);
             exit();
         }
 
-        // 4. Si todo está bien, iniciar sesión
         $this->establecerSesion($alumnoData);
 
         echo json_encode([
@@ -51,7 +52,9 @@ class LoginController implements AlumnoInterface
         exit();
     }
 
-    // Nueva función privada para bajar la complejidad
+    /**
+     * Gestiona las variables de sesión para el usuario autenticado.
+     */
     private function establecerSesion($data) {
         if (session_status() === PHP_SESSION_NONE) session_start();
         $_SESSION['user_id']   = $data['id_usuario'];
@@ -60,81 +63,86 @@ class LoginController implements AlumnoInterface
         $_SESSION['username']  = $data['nombre_usuario'];
     }
 
-
+    /**
+     * Muestra la vista para solicitar el restablecimiento de contraseña.
+     */
     public function forget()
     {
-        echo "Forget Password";
         View::render("Inicio/forgetView", ["user" => 0]);
     }
 
+    /**
+     * Ejecuta el restablecimiento de la contraseña en la base de datos.
+     * Implementa password_hash para mitigar vulnerabilidades de seguridad.
+     */
     public function resetPassword() {
+        header('Content-Type: application/json');
         $action = ['status' => 0];
 
-        if(isset($_POST['email']) && isset($_POST['new_password']))
-        {
+        if(isset($_POST['email']) && isset($_POST['new_password'])) {
             $email = $_POST['email'];
             $newPassword = $_POST['new_password'];
 
-            if ($email == "error@mail.com") {
-                $action = ['status' => 0, 'message' => 'Email no encontrado.'];
+            $alumnoModel = new AlumnoModel();
+            
+            // Buscar al alumno por correo institucional
+            $alumnoData = $alumnoModel->getAlumnoByEmail($email);
+
+            if (!$alumnoData) {
+                $action = ['status' => 0, 'message' => 'El correo institucional no está registrado.'];
             } else {
-                // TODO: Implementar lógica real de actualización de contraseña (hash + DB update)
-                $action = ['status' => 1, 'message' => 'Contraseña restablecida.'];
+                // Encriptación para mejorar el Security Rating detectado en SonarQube
+                $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+
+                // Actualización en el modelo
+                $updated = $alumnoModel->updatePassword($alumnoData['id_usuario'], $hashedPassword);
+
+                if ($updated) {
+                    $action = ['status' => 1, 'message' => 'Contraseña restablecida correctamente.'];
+                } else {
+                    $action = ['status' => 0, 'message' => 'Error técnico al actualizar la contraseña.'];
+                }
             }
-
-            header('Content-Type: application/json');
-            echo json_encode($action);
-            exit();
-
         } else {
-
             $action = ['status' => -1, 'message' => 'Faltan datos para el restablecimiento.'];
-            header('Content-Type: application/json');
-            echo json_encode($action);
-            exit();
         }
+
+        echo json_encode($action);
+        exit();
     }
 
-    public function getAlumnoByMatricula(string $matricula)
-    {
-        // El controlador implementa la interfaz pero delega la lógica de búsqueda al modelo.
-        // TODO: Implement getAlumnoByMatricula() method.
+    /**
+     * Implementación de la interfaz AlumnoInterface.
+     */
+    public function getAlumnoByMatricula(string $matricula) {
+        $alumnoModel = new AlumnoModel();
+        return $alumnoModel->getAlumnoByMatricula($matricula);
     }
 
-
+    /**
+     * Cierra la sesión de forma segura y limpia el caché del navegador.
+     */
     public function logout()
     {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
 
-        // Vaciar datos
         $_SESSION = [];
 
-        // Borrar cookie de sesión
         if (ini_get("session.use_cookies")) {
             $params = session_get_cookie_params();
             setcookie(session_name(), '', time() - 42000,
-                $params["path"],
-                $params["domain"],
-                $params["secure"],
-                $params["httponly"]
+                $params["path"], $params["domain"],
+                $params["secure"], $params["httponly"]
             );
         }
 
-        // Destruir sesión
         session_destroy();
 
-        // Evitar cache para que "Atrás" no muestre páginas protegidas
         header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
-        header("Cache-Control: post-check=0, pre-check=0", false);
         header("Pragma: no-cache");
-
-        // Redirigir a login
         header("Location: /UniCham/login/auth");
         exit;
     }
-
-
-
 }
