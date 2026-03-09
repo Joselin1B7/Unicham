@@ -61,9 +61,7 @@ class UserController
     // ===========================
     public function talleres()
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
+        if (session_status() === PHP_SESSION_NONE) session_start();
 
         if (empty($_SESSION['matricula']) || empty($_SESSION['username'])) {
             header('Location: /UniCham/login/auth');
@@ -71,58 +69,47 @@ class UserController
         }
 
         $matricula = $_SESSION['matricula'];
-
-        // Datos del alumno
-        $perfil = $this->model->getPerfilAlumno($matricula);
-
-        // Periodo actual
         $periodoActual = $this->model->getPeriodoActual();
-
-        // Talleres inscritos
         $talleres = $this->model->getTalleresAlumno($matricula);
 
-        // Métricas de horas
-        $TOTAL_REQUERIDO = 150;
-        $MAX_POR_CUATRI  = 50;
-        $MIN_POR_CUATRI  = 35;
+        // Delegamos el cálculo a una función privada para reducir complejidad
+        $calculos = $this->procesarHorasTalleres($talleres, $periodoActual);
 
-        $horasTotalesAcumuladas = 0;
-        $horasEsteCuatri = 0;
+        View::render("users/talleresView", array_merge([
+            "perfil"    => $this->model->getPerfilAlumno($matricula),
+            "matricula" => $matricula,
+            "periodoActual" => $periodoActual,
+            "talleres"  => $talleres,
+            "TOTAL_REQUERIDO" => 150,
+            "MAX_POR_CUATRI"  => 50,
+            "MIN_POR_CUATRI"  => 35
+        ], $calculos));
+    }
 
-        $iniPeriodo = $periodoActual['fecha_inicio'] ?? null;
-        $finPeriodo = $periodoActual['fecha_fin'] ?? null;
+    private function procesarHorasTalleres($talleres, $periodo) {
+        $total = 0;
+        $esteCuatri = 0;
+        $ini = $periodo['fecha_inicio'] ?? null;
+        $fin = $periodo['fecha_fin'] ?? null;
 
         foreach ($talleres as $row) {
             $h = (int)($row['horas_acumuladas'] ?? 0);
-            $horasTotalesAcumuladas += $h;
+            $total += $h;
 
-            if ($iniPeriodo && $finPeriodo && !empty($row['fecha_inscripcion'])) {
-                $soloFecha = substr($row['fecha_inscripcion'], 0, 10);
-                if ($soloFecha >= $iniPeriodo && $soloFecha <= $finPeriodo) {
-                    $horasEsteCuatri += $h;
+            if ($ini && $fin && !empty($row['fecha_inscripcion'])) {
+                $fecha = substr($row['fecha_inscripcion'], 0, 10);
+                if ($fecha >= $ini && $fecha <= $fin) {
+                    $esteCuatri += $h;
                 }
             }
         }
 
-        $horasRestantesGlobal = max(0, $TOTAL_REQUERIDO - $horasTotalesAcumuladas);
-
-        View::render("users/talleresView", [
-            "perfil"                  => $perfil,
-            "matricula"               => $matricula,
-
-            "periodoActual"           => $periodoActual,
-            "talleres"                => $talleres,
-
-            "TOTAL_REQUERIDO"         => $TOTAL_REQUERIDO,
-            "MAX_POR_CUATRI"          => $MAX_POR_CUATRI,
-            "MIN_POR_CUATRI"          => $MIN_POR_CUATRI,
-
-            "horasTotalesAcumuladas"  => $horasTotalesAcumuladas,
-            "horasRestantesGlobal"    => $horasRestantesGlobal,
-            "horasEsteCuatri"         => $horasEsteCuatri,
-        ]);
+        return [
+            "horasTotalesAcumuladas" => $total,
+            "horasEsteCuatri" => $esteCuatri,
+            "horasRestantesGlobal" => max(0, 150 - $total)
+        ];
     }
-
 
 
 
@@ -552,3 +539,4 @@ class UserController
     }
 }
 ?>
+
