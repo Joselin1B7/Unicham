@@ -14,74 +14,50 @@ class LoginController implements AlumnoInterface
 
 
     public function validador() {
-        $action = ['status' => 0];
-
-        // Datos enviados por AJAX desde el login
-        if (isset($_POST['matricula']) && isset($_POST['password'])) {
-
-            $matricula = $_POST['matricula'];
-            $password  = $_POST['password'];
-
-            $alumnoModel = new AlumnoModel();
-            $alumnoData  = $alumnoModel->getAlumnoByMatricula($matricula);
-
-            if ($alumnoData) {
-
-                // Verificamos contraseña usando el hash en la BD
-                if (password_verify($password, $alumnoData['password_hash'])) {
-
-                    if (session_status() === PHP_SESSION_NONE) {
-                        session_start();
-                    }
-
-                    // Guardamos en sesión todo lo que necesitamos
-                    $_SESSION['user_id']   = $alumnoData['id_usuario'];     // ej: 1
-                    $_SESSION['matricula'] = $alumnoData['matricula'];      // ej: 1001234567
-                    $_SESSION['rol_id']    = $alumnoData['id_rol'];         // ej: 1 / 2 / 3
-
-                    // MUY IMPORTANTE:
-                    // Esto se usa luego en UserController->perfil() y ->fotoPerfil()
-                    // y es como buscamos al usuario en la tabla 'usuarios'
-                    $_SESSION['username']  = $alumnoData['nombre_usuario']; // ej: "1001234567" o "A00123456"
-
-                    // URL a donde tu JS va a redirigir
-                    $action = [
-                        'status'       => 1,
-                        'message'      => 'Credenciales correctas. Acceso concedido.',
-                        'redirect_url' => '/UniCham/index.php?controller=user&method=perfil'
-                    ];
-
-                } else {
-                    // Contraseña inválida
-                    $action = [
-                        'status'  => 0,
-                        'message' => 'Matrícula o contraseña incorrectas.'
-                    ];
-                }
-
-            } else {
-                // No existe esa matrícula
-                $action = [
-                    'status'  => 0,
-                    'message' => 'Matrícula o contraseña incorrectas.'
-                ];
-            }
-
-            header('Content-Type: application/json');
-            echo json_encode($action);
-            exit();
-
-        } else {
-            // Petición mala (faltan campos)
-            $action = [
-                'status'  => -1,
-                'message' => 'Faltan datos de autenticación (matrícula o contraseña).'
-            ];
-
-            header('Content-Type: application/json');
-            echo json_encode($action);
+        header('Content-Type: application/json');
+        
+        // 1. Validar que existan los datos
+        if (!isset($_POST['matricula']) || !isset($_POST['password'])) {
+            echo json_encode(['status' => -1, 'message' => 'Faltan datos de autenticación.']);
             exit();
         }
+
+        $matricula = $_POST['matricula'];
+        $password  = $_POST['password'];
+
+        $alumnoModel = new AlumnoModel();
+        $alumnoData  = $alumnoModel->getAlumnoByMatricula($matricula);
+
+        // 2. Validar si el alumno existe
+        if (!$alumnoData) {
+            echo json_encode(['status' => 0, 'message' => 'Matrícula o contraseña incorrectas.']);
+            exit();
+        }
+
+        // 3. Validar contraseña
+        if (!password_verify($password, $alumnoData['password_hash'])) {
+            echo json_encode(['status' => 0, 'message' => 'Matrícula o contraseña incorrectas.']);
+            exit();
+        }
+
+        // 4. Si todo está bien, iniciar sesión
+        $this->establecerSesion($alumnoData);
+
+        echo json_encode([
+            'status' => 1,
+            'message' => 'Credenciales correctas. Acceso concedido.',
+            'redirect_url' => '/UniCham/index.php?controller=user&method=perfil'
+        ]);
+        exit();
+    }
+
+    // Nueva función privada para bajar la complejidad
+    private function establecerSesion($data) {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $_SESSION['user_id']   = $data['id_usuario'];
+        $_SESSION['matricula'] = $data['matricula'];
+        $_SESSION['rol_id']    = $data['id_rol'];
+        $_SESSION['username']  = $data['nombre_usuario'];
     }
 
 
