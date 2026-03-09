@@ -29,25 +29,21 @@ $(document).ready(function() {
      * @param {string} password
      * @returns {boolean}
      */
-    function validateFields(matricula, password){
-        var status = true;
-        // La expresión regular verifica 10 dígitos numéricos exactos
-        // 1. Validar Matrícula
-        if(matricula === "")
-        {
-            $('#MatriculaAlert').text("El campo Matrícula no puede estar vacío.").show();
-            status = false;
-        }
-        // 2. Validar Contraseña
-        if(password === "")
-        {
-            $('#passwordAlert').text("El campo Contraseña no puede estar vacío.").show();
-            status = false;
-        }
-
-        return status;
+   // Sustituye solo la función validateFields en users.js
+function validateFields(matricula, password) {
+    // Retornos tempranos: SonarQube ama esto porque no hay anidación
+    if (!matricula) {
+        $('#MatriculaAlert').text("El campo Matrícula no puede estar vacío.").show();
+        return false;
+    }
+    
+    if (!password) {
+        $('#passwordAlert').text("El campo Contraseña no puede estar vacío.").show();
+        return false;
     }
 
+    return true; // Si llega aquí, todo está bien
+}
 
     /**
      * Realiza la llamada AJAX al controlador para validar las credenciales.
