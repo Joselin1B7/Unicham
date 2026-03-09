@@ -1,7 +1,7 @@
 $(document).ready(function() {
     $('#btnRegister').click(function(e) {
         e.preventDefault();
-        $('.alert').hide(); // Oculta todas las alertas de un golpe
+        $('.alert').hide();
 
         const data = {
             name: $('#inputName').val().trim(),
@@ -12,18 +12,18 @@ $(document).ready(function() {
         };
         const confirm = $('#inputConfirmPassword').val().trim();
 
-        if (validateFields(data, confirm)) {
+        if (validateRegistrationFields(data, confirm)) {
             processRegistration(data);
         }
     });
 
-    function validateFields(d, confirm) {
-        if (!d.name) return showErr('#nameAlert', "Campo obligatorio");
-        if (!d.firstname) return showErr('#firstnameAlert', "Campo obligatorio");
-        if (!d.lastname) return showErr('#lastnameAlert', "Campo obligatorio");
-        if (!d.phone) return showErr('#phoneAlert', "Campo obligatorio");
-        if (!d.password) return showErr('#passwordAlert', "Campo obligatorio");
-        if (d.password !== confirm) return showErr('#confirmPasswordAlert', "No coinciden");
+    function validateRegistrationFields(d, confirm) {
+        if (!d.name) return showErr('#nameAlert', "El nombre es obligatorio.");
+        if (!d.firstname) return showErr('#firstnameAlert', "El primer nombre es obligatorio.");
+        if (!d.lastname) return showErr('#lastnameAlert', "El apellido es obligatorio.");
+        if (!d.phone) return showErr('#phoneAlert', "El teléfono es obligatorio.");
+        if (!d.password) return showErr('#passwordAlert', "La contraseña es obligatoria.");
+        if (d.password !== confirm) return showErr('#confirmPasswordAlert', "Las contraseñas no coinciden.");
         return true;
     }
 
@@ -35,10 +35,10 @@ $(document).ready(function() {
     function processRegistration(info) {
         $.post('/UniCham/index.php?controller=user&method=registro', info, function(res) {
             if (res.status == 1) {
-                return Swal.fire({ title: '¡Exitoso!', text: 'Cuenta creada.', icon: 'success' });
+                return Swal.fire({ title: '¡Registro Exitoso!', text: 'Tu cuenta ha sido creada.', icon: 'success' });
             }
-            const msg = res.status == 0 ? 'El teléfono ya existe.' : 'Error inesperado.';
+            const msg = res.status == 0 ? 'El teléfono ya está registrado.' : 'Error inesperado.';
             Swal.fire('Error', msg, 'error');
-        }, 'json').fail(() => Swal.fire('Error', 'Fallo de conexión', 'error'));
+        }, 'json').fail(() => Swal.fire('Error', 'No se pudo conectar con el servidor.', 'error'));
     }
 });
