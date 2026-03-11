@@ -1,47 +1,49 @@
 <?php
-require_once('db/Conexiondb.php');
+require_once('models/AsesoriasModel.php');
 
-class AsesoriasModel extends Conexiondb {
-    private $db;
+class AsesoriasController {
+    private $model;
 
     public function __construct() {
-        $this->db = $this->conectardb();
-        $this->setNames();
+        $this->model = new AsesoriasModel();
     }
 
-    public function getAlumnoHeaderData($matricula) {
-        $sql = "SELECT CONCAT(a.nombre, ' ', a.apellido_paterno) AS nombre_completo,
-                       a.matricula, c.nombre_carrera AS carrera
-                FROM alumnos a
-                INNER JOIN careers c ON c.id_carrera = a.id_carrera
-                WHERE a.matricula = :matricula LIMIT 1";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([':matricula' => $matricula]);
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: ['nombre_completo' => 'N/D', 'matricula' => $matricula, 'carrera' => 'N/D'];
-    }
+    public function index() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $matricula = $_SESSION['matricula'] ?? '20250001';
+        
+        $alumnoInfo = $this->model->getAlumnoHeaderData($matricula);
+        $asesorias = $this->model->getAsesorias();
+        
+        $diasSemana = ['Lunes' => 1, 'Martes' => 2, 'Miércoles' => 3, 'Miercoles' => 3, 'Jueves' => 4, 'Viernes' => 5];
+        $tablaHorario = [];
 
-    /**
-     * Devuelve el horario ya agrupado por hora y día para que el controlador no haga bucles.
-     * Complejidad: 4
-     */
-    public function getHorarioEstructurado() {
-        $sql = "SELECT a.dia_semana, a.hora_inicio, a.hora_fin, a.lugar, m.nombre_materia AS materia, p.nombre AS profesor
-                FROM asesorias a
-                INNER JOIN materias m ON m.id_materia = a.id_materia
-                INNER JOIN profesores p ON p.id_profesor = a.id_profesor";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute();
-        $raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($asesorias as $row) {
+            $diaSemana = $row['dia_semana'];
+            $horaInicio = $row['hora_inicio'];
+            $horaFin = $row['hora_fin'];
+            $materia = $row['materia'];
+            $profesor = $row['profesor'];
+            $lugar = $row['lugar'];
 
-        $diasMap = ['Lunes'=>1, 'Martes'=>2, 'Miércoles'=>3, 'Jueves'=>4, 'Viernes'=>5];
-        $tabla = [];
+            $horaRango = substr($horaInicio, 0, 5) . " - " . substr($horaFin, 0, 5);
+            $diaColumna = $diasSemana[$diaSemana] ?? null;
 
-        foreach ($raw as $r) {
-            $hora = substr($r['hora_inicio'], 0, 5) . " - " . substr($r['hora_fin'], 0, 5);
-            $diaId = $diasMap[$r['dia_semana']] ?? 0;
-            if ($diaId > 0) $tabla[$hora][$diaId] = $r;
+            if ($diaColumna) {
+                $tablaHorario[$horaRango][$diaColumna] = [
+                    'materia' => $materia,
+                    'profesor' => $profesor,
+                    'lugar' => $lugar
+                ];
+            }
         }
-        ksort($tabla);
-        return $tabla;
+
+        $horasUnicas = array_keys($tablaHorario);
+        usort($horasUnicas, function($a, $b) {
+            return strcmp(explode(' - ', $a)[0], explode(' - ', $b)[0]);
+        });
+
+        $periodoActual = "Agosto 2025 - Diciembre 2025";
+        require('views/users/asesoriasView.php');
     }
 }
