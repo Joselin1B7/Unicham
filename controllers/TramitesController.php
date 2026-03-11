@@ -10,23 +10,38 @@ class TramitesController {
     }
 
     public function constanciaTaller() {
-        $this->descargarDoc('CONSTANCIA_TALLER', 'Solicitud talleres', 'constancia_taller.pdf');
+        $matricula = $_SESSION['matricula'] ?? 'A00123456';
+        $tipoTramite = 'CONSTANCIA_TALLER';
+        $descripcion = 'Solicitud de constancia de terminación de talleres';
+        
+        $this->model->registrarSolicitud($matricula, $tipoTramite, $descripcion);
+
+        $filePath = __DIR__ . '/../resources/docs/constancia_taller.pdf';
+        if (file_exists($filePath)) {
+            header('Content-Type: application/pdf');
+            header('Content-Disposition: inline; filename="constancia_taller.pdf"');
+            readfile($filePath);
+        } else {
+            echo "El archivo no existe.";
+        }
+        exit;
     }
 
     public function certificadoEstudios() {
-        $this->descargarDoc('CERTIFICADO_ESTUDIOS', 'Certificado oficial', 'certificado_estudios.pdf');
-    }
-
-    private function descargarDoc($tipo, $desc, $file) {
-        $mat = $_SESSION['matricula'] ?? 'Guest';
-        $this->model->registrarSolicitud($mat, $tipo, $desc);
+        $matricula = $_SESSION['matricula'] ?? 'A00123456';
+        $tipoTramite = 'CERTIFICADO_ESTUDIOS';
+        $descripcion = 'Solicitud de certificado parcial de estudios';
         
-        $path = __DIR__ . '/../resources/docs/' . $file;
-        if (!file_exists($path)) die("Archivo no disponible.");
+        $this->model->registrarSolicitud($matricula, $tipoTramite, $descripcion);
 
-        header('Content-Type: application/pdf');
-        header('Content-Disposition: inline; filename="'.$file.'"');
-        readfile($path);
+        $filePath = __DIR__ . '/../resources/docs/certificado_estudios.pdf';
+        if (file_exists($filePath)) {
+            header('Content-Type: application/pdf');
+            header('Content-Disposition: inline; filename="certificado_estudios.pdf"');
+            readfile($filePath);
+        } else {
+            echo "El archivo no existe.";
+        }
         exit;
     }
 }
