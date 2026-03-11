@@ -10,33 +10,25 @@ class AsesoriasController {
 
     public function index() {
         if (session_status() === PHP_SESSION_NONE) session_start();
-        $matricula = $_SESSION['matricula'] ?? '20250001';
+        $mat = $_SESSION['matricula'] ?? '';
         
-        $alumnoInfo = $this->model->getAlumnoHeaderData($matricula);
+        $alumnoInfo = $this->model->getAlumnoHeaderData($mat);
         $asesorias = $this->model->getAsesorias();
-        
-        $tabla = $this->construirTablaHorario($asesorias);
-        $horas = $this->obtenerHorasOrdenadas($tabla);
+        $tabla = $this->mapearHorario($asesorias);
 
-        $periodo = "Agosto 2025 - Diciembre 2025";
+        $periodo = "Enero - Junio 2026";
         require('views/users/asesoriasView.php');
     }
 
-    private function construirTablaHorario($asesorias) {
-        $map = ['Lunes'=>1,'Martes'=>2,'Miércoles'=>3,'Miercoles'=>3,'Jueves'=>4,'Viernes'=>5];
-        $tabla = [];
-        foreach ($asesorias as $row) {
-            $dia = $map[$row['dia_semana']] ?? null;
-            if (!$dia) continue;
-            $hora = substr($row['hora_inicio'],0,5)." - ".substr($row['hora_fin'],0,5);
-            $tabla[$hora][$dia] = ['materia'=>$row['materia'],'profesor'=>$row['profesor'],'lugar'=>$row['lugar']];
+    private function mapearHorario($datos) {
+        $dias = ['Lunes'=>1, 'Martes'=>2, 'Miércoles'=>3, 'Jueves'=>4, 'Viernes'=>5];
+        $res = [];
+        foreach ($datos as $r) {
+            $h = substr($r['hora_inicio'], 0, 5) . " - " . substr($r['hora_fin'], 0, 5);
+            $d = $dias[$r['dia_semana']] ?? 0;
+            if ($d > 0) $res[$h][$d] = $r;
         }
-        return $tabla;
-    }
-
-    private function obtenerHorasOrdenadas($tabla) {
-        $horas = array_keys($tabla);
-        usort($horas, fn($a, $b) => strcmp(explode(' - ', $a)[0], explode(' - ', $b)[0]));
-        return $horas;
+        ksort($res);
+        return $res;
     }
 }
