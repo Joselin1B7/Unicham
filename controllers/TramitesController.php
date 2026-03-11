@@ -10,21 +10,19 @@ class TramitesController {
     }
 
     public function constanciaTaller() {
-        $this->generarSalida('CONSTANCIA_TALLER', 'Solicitud de talleres', 'constancia_taller.pdf');
+        $this->descargarDoc('CONSTANCIA_TALLER', 'Solicitud talleres', 'constancia_taller.pdf');
     }
 
     public function certificadoEstudios() {
-        $this->generarSalida('CERTIFICADO_ESTUDIOS', 'Certificado oficial', 'certificado_estudios.pdf');
+        $this->descargarDoc('CERTIFICADO_ESTUDIOS', 'Certificado oficial', 'certificado_estudios.pdf');
     }
 
-    private function generarSalida($tipo, $desc, $file) {
-        $mat = $_SESSION['matricula'] ?? 'S/M';
+    private function descargarDoc($tipo, $desc, $file) {
+        $mat = $_SESSION['matricula'] ?? 'Guest';
         $this->model->registrarSolicitud($mat, $tipo, $desc);
+        
         $path = __DIR__ . '/../resources/docs/' . $file;
-
-        if (!file_exists($path)) {
-            die("El archivo no se encuentra disponible.");
-        }
+        if (!file_exists($path)) die("Archivo no disponible.");
 
         header('Content-Type: application/pdf');
         header('Content-Disposition: inline; filename="'.$file.'"');
