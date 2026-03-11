@@ -10,27 +10,24 @@ class TramitesController {
     }
 
     public function constanciaTaller() {
-        $this->procesarDoc('CONSTANCIA_TALLER', 'Solicitud de talleres', 'constancia_taller.pdf');
+        $this->generarSalida('CONSTANCIA_TALLER', 'Solicitud de talleres', 'constancia_taller.pdf');
     }
 
     public function certificadoEstudios() {
-        $this->procesarDoc('CERTIFICADO_ESTUDIOS', 'Certificado licenciatura', 'certificado_estudios.pdf');
+        $this->generarSalida('CERTIFICADO_ESTUDIOS', 'Certificado oficial', 'certificado_estudios.pdf');
     }
 
-    public function reinscripcion() {
-        $this->procesarDoc('REINSCRIPCION', 'Formatos reinscripción', 'reinscripcion_requisitos.pdf');
-    }
-
-    private function procesarDoc($tipo, $desc, $fileName) {
-        $mat = $_SESSION['matricula'] ?? 'A00123456';
+    private function generarSalida($tipo, $desc, $file) {
+        $mat = $_SESSION['matricula'] ?? 'S/M';
         $this->model->registrarSolicitud($mat, $tipo, $desc);
-        $this->streamPDF(__DIR__ . '/../resources/docs/' . $fileName, $tipo . '_' . $mat . '.pdf');
-    }
+        $path = __DIR__ . '/../resources/docs/' . $file;
 
-    private function streamPDF($path, $downloadName) {
-        if (!file_exists($path)) die("Documento no disponible.");
+        if (!file_exists($path)) {
+            die("El archivo no se encuentra disponible.");
+        }
+
         header('Content-Type: application/pdf');
-        header('Content-Disposition: inline; filename="'.$downloadName.'"');
+        header('Content-Disposition: inline; filename="'.$file.'"');
         readfile($path);
         exit;
     }
